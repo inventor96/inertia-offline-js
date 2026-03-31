@@ -35,7 +35,7 @@ You must add a service worker script and wire event listeners.
 ### 1. Install
 
 ```bash
-npm install inertia-offline
+npm install @inventor96/inertia-offline
 ```
 
 ### 2. Service Worker module imports
@@ -51,24 +51,44 @@ import {
 
 ```js
 const fetchHandler = createOfflineFetchHandler({
-  // optional
-  startUrl: '/', // must match your app's start_url in manifest and SW scope
-  offlineFallbackStatuses: new Set([502, 503, 504]), // if the server responds with one of these, treat as offline and serve from cache if available
-  buildOfflineHtml: ({ path }) => `...`, // optional custom offline HTML builder for non-Inertia routes (e.g. static pages, or a custom offline page)
-  customHandlers: [async (ctx) => { return null; }], // optional array of custom request handlers, run after built-in inertia handling, but before navigation and non-Inertia XHR handling
+  // must match your app's start_url in manifest and SW scope
+  startUrl: '/',
+
+  // if the server responds with one of these, treat as offline and serve from cache if available
+  offlineFallbackStatuses: new Set([502, 503, 504]),
+
+  // custom offline HTML builder for non-Inertia routes (e.g. static pages, or a custom offline page)
+  buildOfflineHtml: ({ path }) => `...`,
+
+  // array of custom request handlers, run after built-in inertia handling, but before navigation and non-Inertia XHR handling
+  customHandlers: [async (ctx) => { return null; }],
 });
 
 const maintenanceHandlers = createOfflineMaintenanceHandlers({
-  periodicSyncTags: new Set(['inertia-refresh', 'inertia-refresh:default']), // tags to identify periodic sync events for inertia offline refresh; must match tags used in `usePwa` config
-  pushRefreshType: 'refresh-offline', // push event data type to identify refresh event
-  templateFetchPath: '/', // path from which to fetch the Inertia template HTML
-  templateElementSelector: '[data-page]', // selector to identify the element in the template HTML that has the Inertia page data
+  // tags to identify periodic sync events for inertia offline refresh; must match tags used in `usePwa` config
+  periodicSyncTags: new Set(['inertia-refresh', 'inertia-refresh:default']),
+
+  // push event data type to identify refresh event
+  pushRefreshType: 'refresh-offline',
+
+  // path from which to fetch the Inertia template HTML
+  templateFetchPath: '/',
+
+  // selector to identify the element in the template HTML that has the Inertia page data
+  templateElementSelector: '[data-page]',
 });
 ```
 
 ### 4. Event listeners
 
 ```js
+self.addEventListener('activate', (event) => {
+	event.waitUntil((async () => {
+		await maintenanceHandlers.warmRouteCacheabilityIndex()
+		await self.clients.claim() // recommended SW best practice
+	})())
+});
+
 self.addEventListener('fetch', (event) => {
   if (fetchHandler(event)) return;
 });
@@ -113,9 +133,16 @@ const {
   installEvent,
   updateSW,
 } = usePwa({
+  // how often update checks and refreshes should occur
   refreshIntervalMs: 900000,
+
+  // initial delay before first update check and refresh
   initialRefreshDelayMs: 10000,
+
+  // tag to identify periodic sync events for inertia offline refresh; must match tags used in SW maintenance handler config
   periodicSyncTag: 'inertia-refresh:default',
+
+  // path or URL to do a sanity check for connectivity (e.g. wifi connected but no internet)
   onlineCheckUrl: '/',
 });
 
@@ -156,7 +183,7 @@ const {
 // clean up old precaches automatically
 cleanupOutdatedCaches()
 
-// This is injected by vite-plugin-pwa at build time
+// this is injected by vite-plugin-pwa at build time
 // DO NOT touch at runtime
 precacheAndRoute(self.__WB_MANIFEST || [])
 
@@ -177,7 +204,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
 	const { type } = event.data || {};
 
-	// from vite pwa update handling
+	// from vite pwa/workbox update handling
 	if (type === 'SKIP_WAITING') {
 		self.skipWaiting();
 		return;
@@ -220,6 +247,7 @@ createInertiaApp({
 			.mount(el);
 
 		// refresh cache after logging in or out
+		// assumes you have a boolean `_authed` shared prop in the backend
 		const page = usePage();
 		watch(() => page.props._authed, async (newStatus, oldStatus) => {
 			// logging in
