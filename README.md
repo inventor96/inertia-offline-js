@@ -404,6 +404,7 @@ Use `postServiceWorkerMessage('REFRESH_EXPIRED')` from `usePwa`.
     ]
   }
   ```
+- `ttl` is the time in seconds that the route list is considered fresh; after this, the SW will attempt to refresh the list from the server.
 - `getRouteList()` uses `If-None-Match` with ETag and caches route meta.
 - Path can be configured in `createOfflineFetchHandler` options.
 
@@ -440,6 +441,8 @@ Please include:
 
 - service worker path decisions (start_url, template fetch path, etc.) can be configured in `createOfflineFetchHandler` / `createOfflineMaintenanceHandlers` / `usePwa`.
 - Template path default is `/`; to use a stripped-down template use `templateFetchPath` option and your own route returning Minimal HTML with `[data-page]`.
+
+---
 
 ## Thanks
 
