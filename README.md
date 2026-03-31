@@ -390,7 +390,20 @@ Use `postServiceWorkerMessage('REFRESH_EXPIRED')` from `usePwa`.
 
 #### `/pwa/offline-routes`
 
-- `GET` returns `{ "ttl": <seconds>, "routes": [ { "url": "/x", "paginated": false, "ttl": 1200 }, ... ] }
+- `GET` returns
+  ```json
+  {
+    "ttl": <seconds>,
+    "routes": [
+      {
+        "url": "/x",
+        "paginated": false,
+        "ttl": 1200
+      },
+      ...
+    ]
+  }
+  ```
 - `getRouteList()` uses `If-None-Match` with ETag and caches route meta.
 - Path can be configured in `createOfflineFetchHandler` options.
 
@@ -427,3 +440,7 @@ Please include:
 
 - service worker path decisions (start_url, template fetch path, etc.) can be configured in `createOfflineFetchHandler` / `createOfflineMaintenanceHandlers` / `usePwa`.
 - Template path default is `/`; to use a stripped-down template use `templateFetchPath` option and your own route returning Minimal HTML with `[data-page]`.
+
+## Thanks
+
+Thanks to [@sfreytag](https://github.com/sfreytag) for his work on [`laravel-vite-pwa`](https://github.com/sfreytag/laravel-vite-pwa). His work there on SW registration and Vite integration inspired some of the approach here.
