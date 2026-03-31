@@ -44,6 +44,7 @@ npm install @inventor96/inertia-offline
 import {
   createOfflineFetchHandler,
   createOfflineMaintenanceHandlers,
+  //setDebugLogging, // enable for verbose logging during development and troubleshooting
 } from 'inertia-offline/sw';
 ```
 
@@ -51,31 +52,76 @@ import {
 
 ```js
 const fetchHandler = createOfflineFetchHandler({
-  // must match your app's start_url in manifest and SW scope
+  /**
+   * must match your app's start_url in the manifest
+   */
   startUrl: '/',
 
-  // if the server responds with one of these, treat as offline and serve from cache if available
+  /**
+   * if the server responds with one of these, treat as offline and serve from
+   * cache if available
+   */
   offlineFallbackStatuses: new Set([502, 503, 504]),
 
-  // custom offline HTML builder for non-Inertia routes (e.g. static pages, or a custom offline page)
-  buildOfflineHtml: ({ path }) => `...`,
+  /**
+   * custom offline HTML builder for non-Inertia routes (e.g. static pages, or
+   * a custom offline page)
+   */
+  buildOfflineHtml: (ctx: FetchContext) => `...`,
 
-  // array of custom request handlers, run after built-in inertia handling, but before navigation and non-Inertia XHR handling
-  customHandlers: [async (ctx) => { return null; }],
+  /**
+   * array of custom request handlers, run after built-in inertia handling, but
+   * before navigation and non-Inertia XHR handling
+   */
+  customHandlers: [async (ctx: FetchContext) => { return null; }],
 });
 
-const maintenanceHandlers = createOfflineMaintenanceHandlers({
-  // tags to identify periodic sync events for inertia offline refresh; must match tags used in `usePwa` config
+const {
+  warmRouteCacheabilityIndex,
+  handleMessageEvent,
+  handlePeriodicSyncEvent,
+  handlePushEvent
+} = createOfflineMaintenanceHandlers({
+  /**
+   * tags to identify periodic sync events for inertia offline refresh; must
+   * match tags used by frontend app (e.g. `usePwa`)
+   */
   periodicSyncTags: new Set(['inertia-refresh', 'inertia-refresh:default']),
 
-  // push event data type to identify refresh event
+  /**
+   * push event data type to identify refresh event
+   */
   pushRefreshType: 'refresh-offline',
 
-  // path from which to fetch the Inertia template HTML
+  /**
+   * path from which to fetch the Inertia template HTML; the page data will be
+   * removed from the template (if any) before being stored in the cache, and
+   * used to boot the app when offline
+   */
   templateFetchPath: '/',
 
-  // selector to identify the element in the template HTML that has the Inertia page data
+  /**
+   * selector to identify the element in the template HTML that has the Inertia
+   * page data
+   */
   templateElementSelector: '[data-page]',
+
+  /**
+   * must match your app's start_url in the manifest
+   */
+  startUrl: '/',
+
+  /**
+   * how many concurrent requests to allow when refreshing expired cache
+   * entries
+   */
+  refreshConcurrency: 4,
+
+  /**
+   * delay in ms between refreshes when multiple entries are expired at the
+   * same time
+   */
+  refreshStagger: 500,
 });
 ```
 
@@ -84,8 +130,8 @@ const maintenanceHandlers = createOfflineMaintenanceHandlers({
 ```js
 self.addEventListener('activate', (event) => {
 	event.waitUntil((async () => {
-		await maintenanceHandlers.warmRouteCacheabilityIndex()
-		await self.clients.claim() // recommended SW best practice
+		await warmRouteCacheabilityIndex()
+		await self.clients.claim() // not part of this package, but recommended SW best practice
 	})())
 });
 
@@ -94,15 +140,15 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (maintenanceHandlers.handleMessageEvent(event)) return;
+  if (handleMessageEvent(event)) return;
 });
 
 self.addEventListener('periodicsync', (event) => {
-  if (maintenanceHandlers.handlePeriodicSyncEvent(event)) return;
+  if (handlePeriodicSyncEvent(event)) return;
 });
 
 self.addEventListener('push', (event) => {
-  if (maintenanceHandlers.handlePushEvent(event)) return;
+  if (handlePushEvent(event)) return;
 });
 ```
 
@@ -116,7 +162,7 @@ Handle POST/PATCH/PUT locally, queue in IndexedDB, sync when online. Not part of
 
 ### Recommended: Vite + `vite-plugin-pwa`
 
-`usePwa()` is built around `virtual:pwa-register`; using Vite PWA gives smooth registration and auto-update.
+`usePwa()` is built around `virtual:pwa-register`; using Vite PWA gives smooth building, registration, and update handling.
 
 If you want to handle your own service worker registration and messaging, this dependency is not required.
 
@@ -133,24 +179,36 @@ const {
   installEvent,
   updateSW,
 } = usePwa({
-  // how often update checks and refreshes should occur
-  refreshIntervalMs: 900000,
+  /**
+   * how often update checks and refreshes should occur; set to `null` to
+   * disable periodic refresh
+   */
+  refreshIntervalMs: 900000, // 15 minutes
 
-  // initial delay before first update check and refresh
-  initialRefreshDelayMs: 10000,
+  /**
+   * initial delay before first update check and refresh after app boot; set to
+   * `null` to disable initial refresh
+   */
+  initialRefreshDelayMs: 10000, // 10 seconds
 
-  // tag to identify periodic sync events for inertia offline refresh; must match tags used in SW maintenance handler config
+  /**
+   * tag to identify periodic sync events for inertia offline refresh; must
+   * match tags used in SW maintenance handler config
+   */
   periodicSyncTag: 'inertia-refresh:default',
 
-  // path or URL to do a sanity check for connectivity (e.g. wifi connected but no internet)
+  /**
+   * path or URL to do a sanity check for connectivity (e.g. wifi connected but
+   * no internet); could be a lightweight endpoint that returns a 200 status
+   */
   onlineCheckUrl: '/',
 });
 
 createPwa();
 
 // manual triggers
-postServiceWorkerMessage('REFRESH_EXPIRED');
 postServiceWorkerMessage('CLEAR_OFFLINE');
+postServiceWorkerMessage('REFRESH_EXPIRED');
 ```
 
 State exposed:
@@ -172,7 +230,7 @@ import { createOfflineFetchHandler, createOfflineMaintenanceHandlers, setDebugLo
 // enable debug logging in dev
 setDebugLogging(import.meta.env.DEV);
 
-const handleOfflineFetch = createOfflineFetchHandler();
+const fetchHandler = createOfflineFetchHandler();
 const {
 	warmRouteCacheabilityIndex,
 	handleMessageEvent,
@@ -197,7 +255,7 @@ self.addEventListener('activate', (event) => {
 
 // intercept requests made by the frontend
 self.addEventListener('fetch', (event) => {
-	handleOfflineFetch(event);
+	fetchHandler(event);
 });
 
 // listen for messages from frontend
@@ -205,6 +263,7 @@ self.addEventListener('message', (event) => {
 	const { type } = event.data || {};
 
 	// from vite pwa/workbox update handling
+	// see https://vite-pwa-org.netlify.app/guide/inject-manifest.html#service-worker-code-2
 	if (type === 'SKIP_WAITING') {
 		self.skipWaiting();
 		return;
@@ -226,12 +285,16 @@ self.addEventListener('push', (event) => {
 
 ### app (`resources/js/app.js`)
 
+At a minimum, you need to call `createPwa()` from `usePwa` to set up the SW registration and lifecycle handling.
+
+The example below also includes how to trigger refreshes after login/logout, use `postServiceWorkerMessage()` to send messages to the SW.
+
 ```js
 import { createApp, h, watch } from 'vue'
 import { createInertiaApp, usePage } from '@inertiajs/vue3'
 import { usePwa } from 'inertia-offline/vue';
 
-// PWA setup
+// pwa/service worker setup
 const { createPwa, postServiceWorkerMessage } = usePwa();
 createPwa();
 
@@ -247,7 +310,7 @@ createInertiaApp({
 			.mount(el);
 
 		// refresh cache after logging in or out
-		// assumes you have a boolean `_authed` shared prop in the backend
+		// assumes you have a boolean `_authed` shared prop from the backend
 		const page = usePage();
 		watch(() => page.props._authed, async (newStatus, oldStatus) => {
 			// logging in
@@ -268,6 +331,8 @@ createInertiaApp({
 ```
 
 ### Vite config (`vite.config.ts`)
+
+Most of your Vite config will be standard. The important takeaways from the example below are the image lists and the `VitePWA` plugin configuration.
 
 ```ts
 import laravel from 'laravel-vite-plugin';
@@ -323,32 +388,32 @@ export default defineConfig(({ mode }) => {
 				},
 			}),
 			VitePWA({
-				strategies: 'injectManifest',
-				srcDir: 'resources/js',
-				filename: 'service-worker.js',
+				strategies: 'injectManifest', // required for custom SW
+				srcDir: 'resources/js', // path to your custom SW file
+				filename: 'service-worker.js', // filename for both the source and the output service worker
 				outDir: 'public', // output the injected SW to public/ so it matches the /service-worker.js registration URL
 				injectRegister: false, // we'll register the service worker manually in our app.js
 				injectManifest: {
-					globPatterns: ['**/*.{js,css,html,ico,jpg,png,svg,woff,woff2,ttf,eot}'],
+					globPatterns: ['**/*.{js,css,html,ico,jpg,png,svg,woff,woff2,ttf,eot}'], // automatically include matching files in the precache manifest (relative to base)
 					globIgnores: ['service-worker.js'], // prevent the SW from precaching itself
-					maximumFileSizeToCacheInBytes: 5000000,
+					maximumFileSizeToCacheInBytes: 5000000, // 5 MB limit for precached files
 				},
-				//buildBase: '/',
-				scope: '/',
-				base: '/',
-				registerType: 'prompt',
-				devOptions: {
+				//buildBase: '/', // base path for the built SW; should match the public path where the SW is served from
+				scope: '/', // scope to control
+				base: '/', // base path for the registered SW
+				registerType: 'prompt', // don't register new SW until we explicitly call `updateSW` from `usePwa`
+				devOptions: { // use SW in development for testing; workbox's precaching will not be injected
 					enabled: true,
 					type: 'module',
 				},
-				includeAssets: [
+				includeAssets: [ // include additional static assets in the manifest that aren't imported in the app
 					...publicIcons,
 					...additionalImages,
 				],
-				pwaAssets: {
+				pwaAssets: { // see https://vite-pwa-org.netlify.app/assets-generator/
 					disabled: true,
 				},
-				manifest: {
+				manifest: { // web manifest options
 					name: 'Your App Name',
 					short_name: 'Your App',
 					description: 'Your App Description',
@@ -356,7 +421,7 @@ export default defineConfig(({ mode }) => {
 					background_color: '#ffffff',
 					orientation: 'portrait',
 					display: 'standalone',
-					scope: '/',
+					scope: '/', // scope to control; should match the SW scope
 					start_url: '/', // must match the settings in the SW and app for offline caching to work correctly
 					id: '/',
 					icons: manifestIcons,
@@ -371,42 +436,50 @@ export default defineConfig(({ mode }) => {
 
 ## Service Worker contracts
 
+Below are the message and API contracts between the SW and the app/backend for offline caching and maintenance behaviors. If you want to implement your own app or backend logic, these define how you can work with this package.
+
 ### 1. App → SW message contract
+
+These are the messages that the frontend app can send to the SW. The SW listens for these messages in the `message` event listener and triggers the corresponding behaviors.
 
 - `{'type': 'REFRESH_EXPIRED'}`
   - SW refreshes eligible resources via `refreshAllExpired()`
 - `{'type': 'CLEAR_OFFLINE'}`
   - SW clears IndexedDB via `clearAllData()`
 
-Use `postServiceWorkerMessage('REFRESH_EXPIRED')` from `usePwa`.
-
 ### 2. Backend API contract
 
-#### `/pwa/offline-version`
+These are the API endpoints that the SW expects the backend to implement for offline caching and maintenance behaviors. The SW makes requests to these endpoints as part of its fetch handling and maintenance routines. The paths indicated below are the package defaults, but can be configured in the respective SW handler options.
 
-- `GET` returns `{ "version": "x.y.z" }`
-- Required for `ensureInertiaVersion`.
-- Path can be configured in `createOfflineFetchHandler` options.
+#### `GET /pwa/offline-version`
 
-#### `/pwa/offline-routes`
+Returns the current Inertia version of the app.
 
-- `GET` returns
-  ```json
-  {
-    "ttl": <seconds>,
-    "routes": [
-      {
-        "url": "/x",
-        "paginated": false,
-        "ttl": 1200
-      },
-      ...
-    ]
-  }
-  ```
-- `ttl` is the time in seconds that the route list is considered fresh; after this, the SW will attempt to refresh the list from the server.
-- `getRouteList()` uses `If-None-Match` with ETag and caches route meta.
-- Path can be configured in `createOfflineFetchHandler` options.
+```json
+{
+	"version": "x.y.z"
+}
+```
+
+#### `GET /pwa/offline-routes`
+
+Returns a list of routes to cache for offline use, along with cacheability metadata. The SW uses this list to determine which routes to cache and how to handle them when offline.
+
+```json
+{
+	"ttl": <seconds>,
+	"routes": [
+		{
+			"url": "/x",
+			"paginated": false,
+			"ttl": 1200
+		},
+		...
+	]
+}
+```
+- `ttl` is the time in seconds that the respective item (route list and individual routes) is considered fresh; after this, the next SW refresh process will attempt to refresh that item from the server.
+- ETags and `If-None-Match` headers are supported for both the route list and individual routes, allowing for a simple `304 Not Modified` response when the item hasn't changed, eliminating unnecessary data transfer while keeping the cache up to date.
 
 ---
 
@@ -419,28 +492,6 @@ Use `postServiceWorkerMessage('REFRESH_EXPIRED')` from `usePwa`.
 Enhancements to consider:
 - support for other frontend frameworks (React, Svelte, etc.)
 - add support for more inertia request types (partial reloads, lazy loaded components, etc.)
-
----
-
-## Contributing
-
-1. Fork repository
-2. Create feature branch
-3. Validate with `npm run build`
-4. Open PR with use case and code
-
-Please include:
-- frontend framework/version
-- service worker registration strategy
-- backend controller endpoints
-- offline repro scenario
-
----
-
-## Notes
-
-- service worker path decisions (start_url, template fetch path, etc.) can be configured in `createOfflineFetchHandler` / `createOfflineMaintenanceHandlers` / `usePwa`.
-- Template path default is `/`; to use a stripped-down template use `templateFetchPath` option and your own route returning Minimal HTML with `[data-page]`.
 
 ---
 
