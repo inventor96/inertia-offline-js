@@ -14,6 +14,16 @@ import { logDebug, logWarn } from './utils.js';
 interface EnsureVersionOptions {
 	/** Force refresh from server even if local version exists */
 	forceRefresh?: boolean;
+	/** Endpoint path for fetching the current Inertia version */
+	routeVersionPath?: string;
+}
+
+/**
+ * Options for fetching remote Inertia version.
+ */
+interface GetRemoteInertiaVersionOptions {
+	/** Endpoint path for fetching the current Inertia version */
+	routeVersionPath?: string;
 }
 
 /**
@@ -37,10 +47,14 @@ export async function getLocalInertiaVersion(): Promise<string | null> {
  * Updates the local cache with the fetched version.
  * @returns The version string from server, or null if fetch fails
  */
-export async function getRemoteInertiaVersion(): Promise<string | null> {
+export async function getRemoteInertiaVersion(
+	options: GetRemoteInertiaVersionOptions = {},
+): Promise<string | null> {
 	try {
+		const { routeVersionPath = ROUTE_VERSION_PATH } = options;
+
 		// Fetch the Inertia version from the server
-		const res = await fetch(ROUTE_VERSION_PATH, { credentials: 'include' });
+		const res = await fetch(routeVersionPath, { credentials: 'include' });
 		if (!res.ok) {
 			logWarn('Failed to fetch inertia version', res.statusText);
 			return null;
@@ -65,7 +79,7 @@ export async function getRemoteInertiaVersion(): Promise<string | null> {
  */
 export async function ensureInertiaVersion(options: EnsureVersionOptions = {}): Promise<string | null> {
 	// Extract options with defaults
-	const { forceRefresh = false } = options;
+	const { forceRefresh = false, routeVersionPath } = options;
 
 	// Get local version from database
 	const localVersion = await getLocalInertiaVersion();
@@ -82,7 +96,7 @@ export async function ensureInertiaVersion(options: EnsureVersionOptions = {}): 
 	});
 
 	// Fetch the remote version from the server
-	const remoteVersion = await getRemoteInertiaVersion();
+	const remoteVersion = await getRemoteInertiaVersion({ routeVersionPath });
 
 	if (remoteVersion) {
 		// Compare versions and clear cache if changed

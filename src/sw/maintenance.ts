@@ -108,7 +108,7 @@ export function createOfflineMaintenanceHandlers(
 	 */
 	const warmRouteCacheabilityIndex = (): Promise<boolean> => {
 		if (!routeCacheWarmupPromise) {
-			routeCacheWarmupPromise = getRouteList()
+			routeCacheWarmupPromise = getRouteList(false, { routeMetaPath: refreshOptions.routeMetaPath })
 				.then(() => {
 					logDebug('Route cacheability index warmed by maintenance handlers');
 					return true;

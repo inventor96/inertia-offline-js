@@ -63,14 +63,27 @@ interface RouteListResponse {
 }
 
 /**
+ * Options for fetching route list metadata.
+ */
+interface GetRouteListOptions {
+	/** Endpoint path for fetching offline-cacheable routes */
+	routeMetaPath?: string;
+}
+
+/**
  * Fetches and caches the list of cacheable routes from the server.
  * Uses ETags for efficient cache validation and conditional requests.
  * Also maintains fetch timestamps for TTL-based cache expiration.
  * @param forceRefresh - If true, bypass cache and fetch fresh from server
  * @returns List of cacheable routes, or empty array if fetch fails
  */
-export async function getRouteList(forceRefresh: boolean = false): Promise<RouteMeta[]> {
+export async function getRouteList(
+	forceRefresh: boolean = false,
+	options: GetRouteListOptions = {},
+): Promise<RouteMeta[]> {
 	try {
+		const { routeMetaPath = ROUTE_META_PATH } = options;
+
 		// Get current cache metadata
 		const meta = await db.system.get('routeListFetchedAt');
 		const ttlMeta = await db.system.get('routeListTTL');
@@ -95,7 +108,7 @@ export async function getRouteList(forceRefresh: boolean = false): Promise<Route
 		}
 
 		// Fetch route list from server
-		const routeRes = await fetch(ROUTE_META_PATH, {
+		const routeRes = await fetch(routeMetaPath, {
 			credentials: 'include',
 			headers,
 		});

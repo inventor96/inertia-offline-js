@@ -9,6 +9,8 @@ import {
 	DEFAULT_START_URL,
 	OFFLINE_TEMPLATE_FETCH_PATH,
 	OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	ROUTE_META_PATH,
+	ROUTE_VERSION_PATH,
 } from './constants.js';
 import { getPage, storePage, touchPage } from './pages.js';
 import { getRouteList } from './routes.js';
@@ -27,6 +29,10 @@ export interface RefreshOptions {
 	templateFetchPath?: string;
 	/** CSS selector for the Inertia page element in template (default: '[data-page]') */
 	templateElementSelector?: string;
+	/** Endpoint path for fetching offline-cacheable routes (default: '/pwa/offline-routes') */
+	routeMetaPath?: string;
+	/** Endpoint path for fetching current Inertia version (default: '/pwa/offline-version') */
+	routeVersionPath?: string;
 	/** PWA start URL for handling redirects (from manifest.start_url) */
 	startUrl?: string;
 	/** Maximum number of concurrent page refresh operations (default: 4) */
@@ -43,6 +49,10 @@ interface CachePageOptions {
 	retryOnVersionMismatch?: boolean;
 	/** Inertia version to use for request (null = fetch current) */
 	inertiaVersion?: string | null;
+	/** Endpoint path for fetching offline-cacheable routes */
+	routeMetaPath?: string;
+	/** Endpoint path for fetching current Inertia version */
+	routeVersionPath?: string;
 }
 
 /**
@@ -53,6 +63,8 @@ export function getRefreshOptions(): RefreshOptions {
 	return {
 		templateFetchPath: OFFLINE_TEMPLATE_FETCH_PATH,
 		templateElementSelector: OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+		routeMetaPath: ROUTE_META_PATH,
+		routeVersionPath: ROUTE_VERSION_PATH,
 		startUrl: DEFAULT_START_URL,
 		refreshConcurrency: REFRESH_CONCURRENCY,
 		refreshStagger: REFRESH_STAGGER,
@@ -70,15 +82,17 @@ export async function refreshAllExpired(options: RefreshOptions = {}): Promise<v
 		const {
 			templateFetchPath = OFFLINE_TEMPLATE_FETCH_PATH,
 			templateElementSelector = OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+			routeMetaPath = ROUTE_META_PATH,
+			routeVersionPath = ROUTE_VERSION_PATH,
 			startUrl = DEFAULT_START_URL,
 			refreshConcurrency = REFRESH_CONCURRENCY,
 			refreshStagger = REFRESH_STAGGER,
 		} = options;
 
-	logDebug('refreshAllExpired started. Options: ', { templateFetchPath, templateElementSelector, startUrl, refreshConcurrency, refreshStagger });
+	logDebug('refreshAllExpired started. Options: ', { templateFetchPath, templateElementSelector, routeMetaPath, routeVersionPath, startUrl, refreshConcurrency, refreshStagger });
 
 	// Ensure current Inertia version
-	const inertiaVersion = await ensureInertiaVersion({ forceRefresh: true });
+	const inertiaVersion = await ensureInertiaVersion({ forceRefresh: true, routeVersionPath });
 	logDebug('refreshAllExpired using Inertia version', { inertiaVersion });
 
 	// Refresh offline template from app
@@ -90,7 +104,7 @@ export async function refreshAllExpired(options: RefreshOptions = {}): Promise<v
 		}
 
 		// Get list of cacheable routes
-		const list = await getRouteList();
+		const list = await getRouteList(false, { routeMetaPath });
 		const toRefresh: RouteMeta[] = [];
 
 		// Identify expired or missing pages
@@ -117,7 +131,7 @@ export async function refreshAllExpired(options: RefreshOptions = {}): Promise<v
 		// Refresh first page to check we're on the right version
 		const firstPage = toRefresh.pop();
 		if (firstPage) {
-			await cachePage(firstPage.url, { inertiaVersion });
+			await cachePage(firstPage.url, { inertiaVersion, routeMetaPath, routeVersionPath });
 		}
 
 		// Exit if only one page was needed
@@ -135,7 +149,7 @@ export async function refreshAllExpired(options: RefreshOptions = {}): Promise<v
 				const route: RouteMeta = toRefresh[currentIndex];
 
 				try {
-					await cachePage(route.url, { inertiaVersion });
+					await cachePage(route.url, { inertiaVersion, routeMetaPath, routeVersionPath });
 				} catch (err) {
 					logWarn('Failed refreshing route', route.url, err);
 				}
@@ -163,10 +177,15 @@ export async function refreshAllExpired(options: RefreshOptions = {}): Promise<v
 export async function cachePage(url: string, options: CachePageOptions = {}): Promise<void> {
 	try {
 		// Set option defaults
-		const { retryOnVersionMismatch = true, inertiaVersion: providedVersion = null } = options;
+		const {
+			retryOnVersionMismatch = true,
+			inertiaVersion: providedVersion = null,
+			routeMetaPath = ROUTE_META_PATH,
+			routeVersionPath = ROUTE_VERSION_PATH,
+		} = options;
 
 		// Ensure current Inertia version
-		const currentVersion = providedVersion || await ensureInertiaVersion();
+		const currentVersion = providedVersion || await ensureInertiaVersion({ routeVersionPath });
 		if (!currentVersion) {
 			logWarn('Skipping cachePage because no Inertia version is available', { url });
 			return;
@@ -214,9 +233,14 @@ export async function cachePage(url: string, options: CachePageOptions = {}): Pr
 				// Clear cache and retry with fresh version
 				logWarn('Version mismatch detected for offline page. Clearing stale state and retrying once.', url);
 				await clearAllData();
-				await getRouteList(true);
-				const refreshedVersion = await ensureInertiaVersion({ forceRefresh: true });
-				await cachePage(url, { retryOnVersionMismatch: false, inertiaVersion: refreshedVersion });
+				await getRouteList(true, { routeMetaPath });
+				const refreshedVersion = await ensureInertiaVersion({ forceRefresh: true, routeVersionPath });
+				await cachePage(url, {
+					retryOnVersionMismatch: false,
+					inertiaVersion: refreshedVersion,
+					routeMetaPath,
+					routeVersionPath,
+				});
 			} else {
 				// Other errors: skip caching this page
 				logWarn('Failed to fetch offline page for caching', url, res.statusText);

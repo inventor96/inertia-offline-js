@@ -107,6 +107,16 @@ const {
   templateElementSelector: '[data-page]',
 
   /**
+   * endpoint that returns offline route metadata
+   */
+  routeMetaPath: '/pwa/offline-routes',
+
+  /**
+   * endpoint that returns the current Inertia version
+   */
+  routeVersionPath: '/pwa/offline-version',
+
+  /**
    * must match your app's start_url in the manifest
    */
   startUrl: '/',
