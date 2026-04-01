@@ -68,13 +68,13 @@ const fetchHandler = createOfflineFetchHandler({
    * custom offline HTML builder for non-Inertia routes (e.g. static pages, or
    * a custom offline page)
    */
-  buildOfflineHtml: (ctx: FetchContext) => `...`,
+  buildOfflineHtml: (event) => `...`,
 
   /**
    * array of custom fetch handlers. each handler receives the original
    * FetchEvent and can return a Response to take over the request. handlers
-   * run after built-in Inertia handling, but before built-in navigation and
-   * non-Inertia XHR handling.
+   * are run after built-in Inertia handling, but before built-in navigation
+   * and non-Inertia XHR handling.
    */
   customHandlers: [async (event) => { ... }],
 });
