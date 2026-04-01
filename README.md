@@ -25,7 +25,7 @@ If you need writes, implement them in your own service worker (see SW setup). Th
 
 ### ⚠️ Storage Efficiency
 
-Because we're caching the Inertia page responses, there's a good chance that the browser's offline storage will become bloated, especially if your app has a lot of shared props. This is magnified with paginated (or other iterable) routes. This is because there's no database normalization or deduplication, like you would (hopefully) have in your backend. If storage is a concern, consider implementing your own service worker that can implement a more sophisticated caching strategy.
+Because we're caching the Inertia page responses, there's a good chance that the browser's offline storage will become bloated, especially if your app has a lot of shared props. This is magnified with paginated (or other iterable) routes. This is because there's no database normalization or deduplication, like you should have in your backend. If storage is a concern, consider implementing your own service worker that can implement a more sophisticated caching strategy.
 
 ---
 
