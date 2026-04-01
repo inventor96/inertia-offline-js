@@ -17,13 +17,13 @@ import { DEFAULT_OFFLINE_FALLBACK_STATUSES } from './constants.js';
 /**
  * Custom fetch handler function type.
  */
-type CustomFetchHandler = (context: FetchContext & { waitUntil: (promise: Promise<unknown>) => void }) => Promise<Response | null | undefined> | Response | null | undefined;
+export type CustomFetchHandler = (event: FetchEvent) => Promise<Response | null | undefined> | Response | null | undefined;
 
 /**
  * Fetch event handler function that returns true/false indicating if the handler
  * intercepted the request.
  */
-type FetchEventHandler = (event: FetchEvent) => boolean;
+export type FetchEventHandler = (event: FetchEvent) => boolean;
 
 /**
  * Classified request context containing parsed request information
@@ -63,12 +63,12 @@ interface FetchContext {
 /**
  * Configuration options for the offline fetch handler.
  */
-interface FetchHandlerOptions {
+export interface FetchHandlerOptions {
 	/** HTTP status codes that should trigger offline fallback (default: 502, 503, 504) */
 	offlineFallbackStatuses?: Set<number>;
 	/** Function to generate offline HTML (default: defaultBuildOfflineHtml) */
 	buildOfflineHtml?: OfflineHtmlBuilder;
-	/** Custom fetch handlers to run before default handlers */
+	/** Custom fetch handlers to run before default navigation and XHR-like handlers */
 	customHandlers?: Array<CustomFetchHandler>;
 	/** PWA start URL (from manifest.start_url, default: '/') */
 	startUrl?: string;
@@ -76,11 +76,11 @@ interface FetchHandlerOptions {
 
 /**
  * Builds an app-agnostic offline HTML page for display when a page cannot be served from cache.
- * @param context - The classified request context
+ * @param event - The FetchEvent from the service worker
  * @returns HTML string for offline error page
  */
-function defaultBuildOfflineHtml(context: Record<string, any>): string {
-	const path = context?.path || '/';
+function defaultBuildOfflineHtml(event: FetchEvent): string {
+	const path = new URL(event.request.url).href.replace(new URL(event.request.url).origin, '') || '/';
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,7 +182,7 @@ function classifyRequest(event: FetchEvent): FetchContext {
  * @returns Response with 503 status and offline HTML
  */
 function buildOfflineHtmlResponse(context: FetchContext, buildOfflineHtml: OfflineHtmlBuilder): Response {
-	return new Response(buildOfflineHtml(context), {
+	return new Response(buildOfflineHtml(context.event), {
 		status: 503,
 		statusText: 'Service Unavailable',
 		headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -282,11 +282,11 @@ async function handleInertiaFetch(context: FetchContext, options: FetchHandlerOp
 
 /**
  * Runs custom fetch handlers in sequence until one returns a Response.
- * @param context - Request context
+ * @param event - Original fetch event
  * @param options - Fetch handler options with customHandlers array
  * @returns Response from first handler, or null if none handled
  */
-async function runCustomHandlers(context: FetchContext, options: FetchHandlerOptions): Promise<Response | null> {
+async function runCustomHandlers(event: FetchEvent, options: FetchHandlerOptions): Promise<Response | null> {
 	const { customHandlers } = options;
 	if (!Array.isArray(customHandlers) || customHandlers.length === 0) {
 		logDebug('No custom fetch handlers configured');
@@ -303,10 +303,7 @@ async function runCustomHandlers(context: FetchContext, options: FetchHandlerOpt
 
 		try {
 			logDebug('Running custom fetch handler', { handler });
-			const response = await handler({
-				...context,
-				waitUntil: (promise: Promise<unknown>) => context.event.waitUntil(promise),
-			});
+			const response = await handler(event);
 			if (response instanceof Response) {
 				return response;
 			}
@@ -429,7 +426,7 @@ export function createOfflineFetchHandler(userOptions: FetchHandlerOptions = {})
 			}
 
 			// Run custom handlers
-			const customResponse = await runCustomHandlers(context, options);
+			const customResponse = await runCustomHandlers(event, options);
 			if (customResponse) {
 				return customResponse;
 			}

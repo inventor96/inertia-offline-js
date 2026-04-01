@@ -47,6 +47,7 @@ export { clearAllData } from './data.js';
 
 // Fetch handler
 export { createOfflineFetchHandler } from './fetch.js';
+export type { CustomFetchHandler, FetchEventHandler, FetchHandlerOptions } from './fetch.js';
 
 // Maintenance handlers
 export { createOfflineMaintenanceHandlers } from './maintenance.js';

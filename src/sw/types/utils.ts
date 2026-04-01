@@ -17,4 +17,4 @@ export interface LogOptions {
 export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
 /** Function type for building offline HTML pages */
-export type OfflineHtmlBuilder = (context: Record<string, any>) => string;
+export type OfflineHtmlBuilder = (event: FetchEvent) => string;

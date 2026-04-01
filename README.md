@@ -7,12 +7,13 @@
 `inertia-offline` is a service worker utility package for Inertia.js apps that enables read-only offline behavior with a Vue composable for state, connectivity, and periodic refresh orchestration.
 
 ### Goals:
-  - offline read-only Inertia route caching
+  - proactive and reactive offline read-only Inertia route caching
   - offline navigation fallback
   - Inertia version validation and stale cache eviction
   - route list cacheability metadata handling
   - support for ETag-based conditional requests and 304 handling
   - periodic refresh by `PeriodicSync`, fallback timers, push and explicit command
+  - reflecting server-side functionality at the start_url (e.g. start_url = `/`, but server redirects `/` to `/dashboard`)
 
 ### Why Read-only?
 
@@ -22,9 +23,9 @@ Writing while offline (forms, mutations) is app-specific and requires custom con
 
 If you need writes, implement them in your own service worker (see SW setup). This package exposes `createOfflineFetchHandler(options)` for request path handling. You can add custom handlers in your SW before/after the built-in path.
 
-### Storage Efficiency
+### ⚠️ Storage Efficiency
 
-Because we're caching the Inertia page responses, there's a good chance that the browser's offline storage will become bloated, especially if your app has a lot of shared props. This is because there's no database normalization or deduplication, like you would (hopefully) have in your backend. If storage is a concern, consider implementing your own service worker that can implement a more sophisticated caching strategy.
+Because we're caching the Inertia page responses, there's a good chance that the browser's offline storage will become bloated, especially if your app has a lot of shared props. This is magnified with paginated (or other iterable) routes. This is because there's no database normalization or deduplication, like you would (hopefully) have in your backend. If storage is a concern, consider implementing your own service worker that can implement a more sophisticated caching strategy.
 
 ---
 
@@ -70,10 +71,12 @@ const fetchHandler = createOfflineFetchHandler({
   buildOfflineHtml: (ctx: FetchContext) => `...`,
 
   /**
-   * array of custom request handlers, run after built-in inertia handling, but
-   * before navigation and non-Inertia XHR handling
+   * array of custom fetch handlers. each handler receives the original
+   * FetchEvent and can return a Response to take over the request. handlers
+   * run after built-in Inertia handling, but before built-in navigation and
+   * non-Inertia XHR handling.
    */
-  customHandlers: [async (ctx: FetchContext) => { return null; }],
+  customHandlers: [async (event) => { ... }],
 });
 
 const {
@@ -162,9 +165,63 @@ self.addEventListener('push', (event) => {
 });
 ```
 
-### 5. Optional: custom write handlers
+### 5. Custom fetch handlers
 
-Handle POST/PATCH/PUT locally, queue in IndexedDB, sync when online. Not part of this package, but can plug into `fetch` event before `fetchHandler(event)`, `customHandlers` array, or after `fetchHandler` returns false.
+Custom handlers receive the original `FetchEvent`, so they can inspect `event.request`, call `event.waitUntil(...)`, or return a `Response` exactly like a normal service worker fetch handler.
+
+They run in array order. The first handler that returns a `Response` wins. Returning anything else (e.g. `null` or `undefined`) means "not handled", so the next custom handler or the package's built-in logic continues.
+
+Some examples of things you can do in a custom handler:
+```js
+function demoCustomHandler(event) {
+	const { request } = event;
+	const url = new URL(request.url);
+
+	// skip requests this handler does not care about
+	if (request.method !== 'GET') return null;
+
+	// schedule background work with the native fetch event API
+	if (url.pathname === '/api/track') {
+		event.waitUntil(Promise.resolve());
+		return null;
+	}
+
+	// return a Response directly and stop the handler chain
+	if (url.pathname === '/ping') {
+		return new Response('pong', {
+			status: 200,
+			headers: { 'Content-Type': 'text/plain' },
+		});
+	}
+
+	// do async work and resolve to a Response
+	if (url.pathname === '/api/preferences') {
+		return caches.match(request).then((cached) => cached || null);
+	}
+
+	// catch errors locally and return a fallback Response
+	if (url.pathname === '/api/profile') {
+		return fetch(request).catch(() => new Response(JSON.stringify({ offline: true }), {
+			status: 503,
+			headers: { 'Content-Type': 'application/json' },
+		}));
+	}
+
+	// return undefined or null to let the next handler or built-in logic continue
+	return null;
+}
+
+const fetchHandler = createOfflineFetchHandler({
+	customHandlers: [demoCustomHandler],
+});
+```
+
+Notes:
+- built-in Inertia GET handling runs before `customHandlers`
+- `customHandlers` run before built-in navigation and non-Inertia XHR handling
+- thrown errors or rejected promises from a custom handler are caught and logged, then the next handler continues
+- if you need to intercept any Inertia GET requests, do that in the service worker's `fetch` listener before calling `fetchHandler(event)`
+- anything that prevents the built-in Inertia GET handling from running (e.g. responding to the request before calling `fetchHandler(event)`) will also prevent the reactive offline caching functionality for that request, since that is tied to the built-in handling
 
 ---
 
