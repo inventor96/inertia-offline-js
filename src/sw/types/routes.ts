@@ -11,10 +11,8 @@ export interface CacheabilityCheck {
 	cacheable: boolean;
 	/** Why it is or isn't cacheable (for logging) */
 	reason?: string;
-	/** TTL in seconds if cacheable */
+	/** Minimum time in seconds between refresh checks */
 	ttl?: number;
-	/** Whether the route uses pagination */
-	paginated?: boolean;
 }
 
 /** Context information about a classified request */

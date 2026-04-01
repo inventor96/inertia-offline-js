@@ -26,9 +26,7 @@ export interface InertiaPage {
 export interface RouteMeta {
 	/** The URL/route path */
 	url: string;
-	/** Whether this route uses pagination */
-	paginated: boolean;
-	/** Time-to-live in seconds between refresh checks */
+	/** Minimum time in seconds between refresh checks */
 	ttl: number;
 }
 

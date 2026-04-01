@@ -471,15 +471,18 @@ Returns a list of routes to cache for offline use, along with cacheability metad
 	"routes": [
 		{
 			"url": "/x",
-			"paginated": false,
 			"ttl": 1200
 		},
 		...
 	]
 }
 ```
-- `ttl` is the time in seconds that the respective item (route list and individual routes) is considered fresh; after this, the next SW refresh process will attempt to refresh that item from the server.
+
+**Notes:**
+- `ttl` is the minimum time in seconds between refresh checks for the respective item (route list and individual routes); after this, the next SW refresh process will attempt to refresh that item from the server.
 - ETags and `If-None-Match` headers are supported for both the route list and individual routes, allowing for a simple `304 Not Modified` response when the item hasn't changed, eliminating unnecessary data transfer while keeping the cache up to date.
+- Consistent with the patterns used by Inertia, the backend is responsible for including and excluding routes based on relevant criteria (e.g. auth, user role, etc.)
+- When a route uses pagination, the backend is responsible for enumerating the paginated URLs and including each one in the list. From the perspective of this package, paginated routes are just regular routes with different URLs; there's no special handling or hierarchy.
 
 ---
 

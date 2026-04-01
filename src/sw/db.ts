@@ -12,16 +12,13 @@ import type { OfflineDatabase } from './types/db.js';
  */
 export const db: OfflineDatabase = new Dexie('InertiaOfflineDB') as OfflineDatabase;
 
-db.version(3).stores({
+db.version(4).stores({
 	// Cache individual Inertia pages by their URL
-	// Indexed fields allow quick filtering: pages are indexed by component, props, version, savedAt, and etag
 	pages: '&url, component, props, version, savedAt, etag',
 
 	// Metadata about which routes are cacheable offline
-	// Indexed by URL for quick lookup, plus paginated and ttl for filtering/sorting
-	routeMeta: '&url, paginated, ttl',
+	routeMeta: '&url, ttl',
 
 	// System-level metadata (e.g., Inertia version, sync state)
-	// Key-value store with key as primary index
 	system: '&key, value',
 });

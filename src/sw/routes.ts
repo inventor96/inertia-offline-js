@@ -124,7 +124,6 @@ export async function getRouteList(forceRefresh: boolean = false): Promise<Route
 		for (const r of routes) {
 			await db.routeMeta.put({
 				url: r.url,
-				paginated: r.paginated,
 				ttl: r.ttl,
 			});
 		}
