@@ -6,6 +6,8 @@
 
 `inertia-offline` is a service worker utility package for Inertia.js apps that enables read-only offline behavior with a Vue composable for state, connectivity, and periodic refresh orchestration.
 
+This JS/TS frontend package is designed to work with a backend package, e.g. [`inertia-offline`](https://github.com/inventor96/inertia-offline-php) (the core PHP backend package). Both the frontend and the backend aspects are required for an Inertia.js app.
+
 ### Goals:
   - proactive and reactive offline read-only Inertia route caching
   - offline navigation fallback
