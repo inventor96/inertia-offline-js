@@ -1,6 +1,6 @@
 {
   "name": "inertia-offline",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Enable offline read-only support for Inertia.js-based PWAs",
   "keywords": [
     "inertia",
