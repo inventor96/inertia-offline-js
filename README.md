@@ -38,7 +38,7 @@ You must add a service worker script and wire event listeners.
 ### 1. Install
 
 ```bash
-npm install @inventor96/inertia-offline
+npm install inertia-offline
 ```
 
 ### 2. Service Worker module imports
