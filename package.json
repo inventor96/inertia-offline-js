@@ -1,6 +1,6 @@
 {
   "name": "inertia-offline",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Enable offline read-only support for Inertia.js-based PWAs",
   "keywords": [
     "inertia",
@@ -10,6 +10,9 @@
   ],
   "license": "MIT",
   "author": "inventor96",
+  "repository": {
+    "url": "https://github.com/inventor96/inertia-offline-js"
+  },
   "type": "module",
   "main": "index.ts",
   "files":[
