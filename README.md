@@ -443,6 +443,7 @@ export default defineConfig(({ mode }) => {
 	const additionalImages = [];
 
 	return {
+		base: '/', // resolve bundled fonts at build time correctly regardless of laravel's config
 		plugins: [
 			laravel({
 				input: 'resources/js/app.js',
