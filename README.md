@@ -231,11 +231,9 @@ Notes:
 
 ### Recommended: Vite + `vite-plugin-pwa`
 
-`usePwa()` uses native service worker registration. No additional dependency beyond `vite-plugin-pwa` (for the service worker build step) is required.
+`usePwa()` is built around `virtual:pwa-register`; using Vite PWA gives smooth building, registration, and update handling.
 
-If you want to handle your own service worker registration, this package is not required.
-
-When you need a different development service worker endpoint, pass it explicitly with `devSwPath`. If your stack needs to control whether dev mode is active, pass `isDevMode` explicitly. Otherwise, the package will make a best effort to detect dev mode based on `import.meta.env` properties, but this may not be accurate in all environments.
+If you want to handle your own service worker registration and messaging, this dependency is not required.
 
 ### Vue composable
 
@@ -273,21 +271,6 @@ const {
    * no internet); could be a lightweight endpoint that returns a 200 status
    */
   onlineCheckUrl: '/',
-
-  /**
-   * path to the service worker script (default: '/service-worker.js')
-   */
-  swPath: '/service-worker.js',
-
-  /**
-   * optional runtime mode override when auto-detection is not reliable
-   */
-  isDevMode: import.meta.env.DEV,
-
-  /**
-   * optional dev-only service worker path (default: '/dev-sw.js' in dev mode)
-   */
-  devSwPath: '/dev-sw.js',
 });
 
 createPwa();
@@ -301,7 +284,7 @@ State exposed:
 - `onlineAndConnected`: boolean (network+connectivity check)
 - `showRefresh`: boolean (needs refresh prompt)
 - `installEvent`: `BeforeInstallPromptEvent` if available
-- `updateSW`: function to trigger a SW update and optional page reload
+- `updateSW`: function from `registerSW`
 
 ---
 
@@ -381,11 +364,7 @@ import { createInertiaApp, usePage } from '@inertiajs/vue3'
 import { usePwa } from 'inertia-offline/vue';
 
 // pwa/service worker setup
-const { createPwa, postServiceWorkerMessage } = usePwa({
-  swPath: '/service-worker.js',
-  isDevMode: import.meta.env.DEV,
-  devSwPath: '/dev-sw.js',
-});
+const { createPwa, postServiceWorkerMessage } = usePwa();
 createPwa();
 
 createInertiaApp({

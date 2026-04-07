@@ -14,7 +14,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "types": [
-      "node"
+      "node",
+      "vite-plugin-pwa/client"
     ]
   },
   "include": ["src/**/*"],

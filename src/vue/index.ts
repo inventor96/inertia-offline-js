@@ -1,3 +1,4 @@
+import { registerSW } from 'virtual:pwa-register';
 import {
     installEvent,
     onlineAndConnected,
@@ -6,10 +7,7 @@ import {
     updateSW,
 } from './state.js';
 import { logDebug, logWarn } from '../core/utils.js';
-import type {
-    BeforeInstallPromptEvent,
-    UsePwaOptions,
-} from '../core/types.js';
+import type { BeforeInstallPromptEvent, UsePwaOptions } from '../core/types.js';
 
 const DEFAULT_PERIODIC_SYNC_TAG = 'inertia-refresh:default';
 const DEFAULT_REFRESH_INTERVAL_MS = 900000;
@@ -20,133 +18,6 @@ const DEFAULT_ONLINE_CHECK_URL = '/';
  * The timer ID for the fallback refresh timer.
  */
 let refreshFallbackTimerId: number | undefined;
-
-const DEFAULT_SERVICE_WORKER_PATH = '/service-worker.js';
-const DEFAULT_DEV_SERVICE_WORKER_PATH = '/dev-sw.js';
-
-type ViteLikeEnv = {
-    DEV?: boolean;
-    MODE?: string;
-};
-
-type SwRegistrarOptions = {
-    immediate?: boolean;
-    onNeedRefresh?: () => void;
-    onOfflineReady?: () => void;
-    onRegistered?: (registration: ServiceWorkerRegistration | undefined) => void;
-    onRegisteredSW?: (swScriptUrl: string, registration: ServiceWorkerRegistration | undefined) => void;
-    onRegisterError?: (error: unknown) => void;
-};
-
-function createServiceWorkerRegistrar(
-    swPath: string,
-    options: SwRegistrarOptions = {},
-): (reloadPage?: boolean) => Promise<void> {
-    const {
-        onNeedRefresh,
-        onOfflineReady,
-        onRegistered,
-        onRegisteredSW,
-        onRegisterError,
-    } = options;
-
-    let registrationPromise: Promise<ServiceWorkerRegistration | undefined> | undefined;
-
-    const register = async () => {
-        if (!('serviceWorker' in navigator)) {
-            return undefined;
-        }
-
-        if (!registrationPromise) {
-            registrationPromise = navigator.serviceWorker.register(swPath)
-                .then((registration) => {
-                    swRegistration.value = registration;
-
-                    if (registration.waiting) {
-                        onNeedRefresh?.();
-                    }
-
-                    registration.addEventListener('updatefound', () => {
-                        const installing = registration.installing;
-                        if (!installing) {
-                            return;
-                        }
-
-                        installing.addEventListener('statechange', () => {
-                            if (installing.state !== 'installed') {
-                                return;
-                            }
-
-                            if (navigator.serviceWorker.controller) {
-                                onNeedRefresh?.();
-                                return;
-                            }
-
-                            onOfflineReady?.();
-                        });
-                    });
-
-                    onRegistered?.(registration);
-                    onRegisteredSW?.(swPath, registration);
-
-                    return registration;
-                })
-                .catch((error) => {
-                    onRegisterError?.(error);
-                    return undefined;
-                });
-        }
-
-        return registrationPromise;
-    };
-
-    void register();
-
-    return async (reloadPage = true) => {
-        const registration = await register();
-        if (!registration) {
-            return;
-        }
-
-        if (reloadPage) {
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                window.location.reload();
-            }, { once: true });
-        }
-
-        if (registration.waiting) {
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            return;
-        }
-
-        await registration.update();
-    };
-}
-
-function getViteEnv(): ViteLikeEnv | undefined {
-    const meta = import.meta as ImportMeta & { env?: ViteLikeEnv };
-    return meta.env;
-}
-
-function isDevRuntime(env: ViteLikeEnv | undefined): boolean {
-    return env?.DEV === true || env?.MODE === 'development';
-}
-
-function resolveServiceWorkerPath(options: UsePwaOptions): string {
-    const env = getViteEnv();
-    const devRuntime = options.isDevMode ?? isDevRuntime(env);
-
-    if (devRuntime) {
-        return options.devSwPath ?? DEFAULT_DEV_SERVICE_WORKER_PATH;
-    }
-
-    return options.swPath ?? DEFAULT_SERVICE_WORKER_PATH;
-}
-
-function resolveServiceWorkerRegistrar(options: UsePwaOptions): (opts?: SwRegistrarOptions) => (reloadPage?: boolean) => Promise<void> {
-    const swPath = resolveServiceWorkerPath(options);
-    return (opts) => createServiceWorkerRegistrar(swPath, opts);
-}
 
 /**
  * An event handler for the beforeinstallprompt event, which is fired by the
@@ -437,8 +308,7 @@ export function usePwa(options: UsePwaOptions) {
         window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
 
         // register the service worker and store the update function in the ref for later
-        const registerServiceWorker = resolveServiceWorkerRegistrar(options);
-        updateSW.value = registerServiceWorker({
+        updateSW.value = registerSW({
             // logging
             onRegisteredSW(swUrl, registration) {
                 logDebug(`Service worker registration succeeded (${swUrl}):`, registration);

@@ -1,6 +1,6 @@
 {
   "name": "inertia-offline",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Enable offline read-only support for Inertia.js-based PWAs",
   "keywords": [
     "inertia",
@@ -30,10 +30,14 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "vue": "^3.0.0"
+    "vue": "^3.0.0",
+    "vite-plugin-pwa": "^1.2.0"
   },
   "peerDependenciesMeta": {
     "vue": {
+      "optional": true
+    },
+    "vite-plugin-pwa": {
       "optional": true
     }
   },
@@ -43,6 +47,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "typescript": "^5.0.0",
+    "vite-plugin-pwa": "^1.2.0",
     "vue": "^3.0.0"
   }
 }
