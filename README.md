@@ -231,7 +231,7 @@ Notes:
 
 ### Recommended: Vite + `vite-plugin-pwa`
 
-`usePwa()` is built around the `registerSW` function from `virtual:pwa-register`; using Vite PWA gives smooth building, registration, and update handling. Because it's a virtual module that depends your Vite configuration, you must import it yourself and pass the `registerSW` function to `usePwa` for it to work correctly.
+`usePwa()` is built around the `registerSW` function from `virtual:pwa-register`; using Vite PWA gives smooth building, registration, and update handling. Because it's a virtual module that depends on your Vite configuration, you must import it yourself and pass the `registerSW` function to `createPwa` for it to work correctly.
 
 If you want to handle your own service worker registration and messaging, this dependency is not required.
 
@@ -249,11 +249,6 @@ const {
   installEvent,
   updateSW,
 } = usePwa({
-	/**
-	 * pass the registerSW function from vite-plugin-pwa
-	 */
-	registerSW,
-
   /**
    * how often update checks and refreshes should occur; set to `null` to
    * disable periodic refresh
@@ -279,7 +274,7 @@ const {
   onlineCheckUrl: '/',
 });
 
-createPwa();
+createPwa(registerSW);
 
 // manual triggers
 postServiceWorkerMessage('CLEAR_OFFLINE');
@@ -371,8 +366,8 @@ import { registerSW } from 'virtual:pwa-register';
 import { usePwa } from 'inertia-offline/vue';
 
 // pwa/service worker setup
-const { createPwa, postServiceWorkerMessage } = usePwa({ registerSW });
-createPwa();
+const { createPwa, postServiceWorkerMessage } = usePwa();
+createPwa(registerSW);
 
 createInertiaApp({
 	resolve: (name) => {

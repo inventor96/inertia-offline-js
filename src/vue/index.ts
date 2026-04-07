@@ -6,7 +6,7 @@ import {
     updateSW,
 } from './state.js';
 import { logDebug, logWarn } from '../core/utils.js';
-import type { BeforeInstallPromptEvent, UsePwaOptions } from '../core/types.js';
+import type { BeforeInstallPromptEvent, RegisterServiceWorker, UsePwaOptions } from '../core/types.js';
 
 const DEFAULT_PERIODIC_SYNC_TAG = 'inertia-refresh:default';
 const DEFAULT_REFRESH_INTERVAL_MS = 900000;
@@ -274,12 +274,9 @@ function queueInitialRefresh(options: UsePwaOptions) {
  * @param options.refreshIntervalMs The interval in milliseconds at which to trigger refresh checks. If null, periodic refresh checks are disabled. Default is 900000 (15 minutes).
  * @param options.initialRefreshDelayMs The delay in milliseconds after app boot to trigger the initial refresh check. If null, the initial refresh check is disabled. Default is 10000 (10 seconds).
  * @param options.periodicSyncTag The tag to use for the periodic sync. Default is 'inertia-refresh:default'.
- * @param options.registerSW Function from `virtual:pwa-register` used to register the app service worker.
  * @returns An object containing the PWA functions and reactive state.
  */
 export function usePwa(options: UsePwaOptions) {
-    const { registerSW } = options;
-
     // resolve options with defaults
     options = {
         refreshIntervalMs: DEFAULT_REFRESH_INTERVAL_MS,
@@ -296,9 +293,10 @@ export function usePwa(options: UsePwaOptions) {
      * necessary. This function should be called once during app initialization
      * to ensure that the PWA features are properly set up. If the function is
      * called multiple times, it will prevent re-initialization.
+     * @param registerSW Function from `virtual:pwa-register` used to register the app service worker.
      * @returns void
      */
-    function createPwa() {
+    function createPwa(registerSW: RegisterServiceWorker) {
         // prevent multiple initializations
         if (window.__PWA_INITIALIZED__) {
             logDebug('Already initialized');

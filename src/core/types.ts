@@ -27,9 +27,9 @@ interface BeforeInstallPromptEvent extends Event {
     prompt(): Promise<void>;
 }
 
+type RegisterServiceWorker = (options?: RegisterSWOptions) => (reloadPage?: boolean) => Promise<void>;
+
 interface UsePwaOptions {
-    /** Function from `virtual:pwa-register` used to register the service worker */
-    registerSW: (options?: RegisterSWOptions) => (reloadPage?: boolean) => Promise<void>;
     /** Interval in milliseconds for refreshing the PWA cache (default: 900000) */
     refreshIntervalMs?: number | null;
     /** Initial delay in milliseconds before the first refresh (default: 10000) */
@@ -40,4 +40,4 @@ interface UsePwaOptions {
     onlineCheckUrl?: string;
 }
 
-export type { BeforeInstallPromptEvent, UsePwaOptions };
+export type { BeforeInstallPromptEvent, RegisterServiceWorker, UsePwaOptions };
