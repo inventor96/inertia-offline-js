@@ -1,3 +1,5 @@
+import type { RegisterSWOptions } from 'vite-plugin-pwa/types';
+
 declare global {
     interface Window {
         __PWA_INITIALIZED__?: boolean;
@@ -26,6 +28,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface UsePwaOptions {
+    /** Function from `virtual:pwa-register` used to register the service worker */
+    registerSW: (options?: RegisterSWOptions) => (reloadPage?: boolean) => Promise<void>;
     /** Interval in milliseconds for refreshing the PWA cache (default: 900000) */
     refreshIntervalMs?: number | null;
     /** Initial delay in milliseconds before the first refresh (default: 10000) */

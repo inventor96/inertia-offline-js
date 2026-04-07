@@ -1,4 +1,3 @@
-import { registerSW } from 'virtual:pwa-register';
 import {
     installEvent,
     onlineAndConnected,
@@ -275,9 +274,12 @@ function queueInitialRefresh(options: UsePwaOptions) {
  * @param options.refreshIntervalMs The interval in milliseconds at which to trigger refresh checks. If null, periodic refresh checks are disabled. Default is 900000 (15 minutes).
  * @param options.initialRefreshDelayMs The delay in milliseconds after app boot to trigger the initial refresh check. If null, the initial refresh check is disabled. Default is 10000 (10 seconds).
  * @param options.periodicSyncTag The tag to use for the periodic sync. Default is 'inertia-refresh:default'.
+ * @param options.registerSW Function from `virtual:pwa-register` used to register the app service worker.
  * @returns An object containing the PWA functions and reactive state.
  */
 export function usePwa(options: UsePwaOptions) {
+    const { registerSW } = options;
+
     // resolve options with defaults
     options = {
         refreshIntervalMs: DEFAULT_REFRESH_INTERVAL_MS,
