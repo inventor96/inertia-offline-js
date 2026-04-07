@@ -34,6 +34,8 @@ interface UsePwaOptions {
     periodicSyncTag?: string;
     /** URL for checking online status (default: '/') */
     onlineCheckUrl?: string;
+    /** Path to the service worker script (default: '/service-worker.js') */
+    swPath?: string;
 }
 
 export type { BeforeInstallPromptEvent, UsePwaOptions };

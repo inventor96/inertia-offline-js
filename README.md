@@ -231,9 +231,9 @@ Notes:
 
 ### Recommended: Vite + `vite-plugin-pwa`
 
-`usePwa()` is built around `virtual:pwa-register`; using Vite PWA gives smooth building, registration, and update handling.
+`usePwa()` uses native service worker registration. No additional dependency beyond `vite-plugin-pwa` (for the service worker build step) is required.
 
-If you want to handle your own service worker registration and messaging, this dependency is not required.
+If you want to handle your own service worker registration, this package is not required.
 
 ### Vue composable
 
@@ -271,8 +271,11 @@ const {
    * no internet); could be a lightweight endpoint that returns a 200 status
    */
   onlineCheckUrl: '/',
-});
 
+  /**
+   * path to the service worker script (default: '/service-worker.js')
+   */
+  swPath: '/service-worker.js',
 createPwa();
 
 // manual triggers
@@ -284,7 +287,7 @@ State exposed:
 - `onlineAndConnected`: boolean (network+connectivity check)
 - `showRefresh`: boolean (needs refresh prompt)
 - `installEvent`: `BeforeInstallPromptEvent` if available
-- `updateSW`: function from `registerSW`
+- `updateSW`: function to trigger a SW update and optional page reload
 
 ---
 
@@ -364,7 +367,9 @@ import { createInertiaApp, usePage } from '@inertiajs/vue3'
 import { usePwa } from 'inertia-offline/vue';
 
 // pwa/service worker setup
-const { createPwa, postServiceWorkerMessage } = usePwa();
+const { createPwa, postServiceWorkerMessage } = usePwa({
+  swPath: '/service-worker.js',
+});
 createPwa();
 
 createInertiaApp({
