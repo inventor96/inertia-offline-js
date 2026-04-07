@@ -235,6 +235,8 @@ Notes:
 
 If you want to handle your own service worker registration, this package is not required.
 
+When you need a different development service worker endpoint, pass it explicitly with `devSwPath`. If your stack needs to control whether dev mode is active, pass `isDevMode` explicitly. Otherwise, the package will make a best effort to detect dev mode based on `import.meta.env` properties, but this may not be accurate in all environments.
+
 ### Vue composable
 
 ```ts
@@ -276,6 +278,18 @@ const {
    * path to the service worker script (default: '/service-worker.js')
    */
   swPath: '/service-worker.js',
+
+  /**
+   * optional runtime mode override when auto-detection is not reliable
+   */
+  isDevMode: import.meta.env.DEV,
+
+  /**
+   * optional dev-only service worker path (default: '/dev-sw.js' in dev mode)
+   */
+  devSwPath: '/dev-sw.js',
+});
+
 createPwa();
 
 // manual triggers
@@ -369,6 +383,8 @@ import { usePwa } from 'inertia-offline/vue';
 // pwa/service worker setup
 const { createPwa, postServiceWorkerMessage } = usePwa({
   swPath: '/service-worker.js',
+  isDevMode: import.meta.env.DEV,
+  devSwPath: '/dev-sw.js',
 });
 createPwa();
 

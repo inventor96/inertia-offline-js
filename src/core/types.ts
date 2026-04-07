@@ -36,6 +36,10 @@ interface UsePwaOptions {
     onlineCheckUrl?: string;
     /** Path to the service worker script (default: '/service-worker.js') */
     swPath?: string;
+    /** Override detected runtime mode for service worker path selection */
+    isDevMode?: boolean;
+    /** Development service worker path used only in dev mode */
+    devSwPath?: string;
 }
 
 export type { BeforeInstallPromptEvent, UsePwaOptions };

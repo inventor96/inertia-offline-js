@@ -22,6 +22,12 @@ const DEFAULT_ONLINE_CHECK_URL = '/';
 let refreshFallbackTimerId: number | undefined;
 
 const DEFAULT_SERVICE_WORKER_PATH = '/service-worker.js';
+const DEFAULT_DEV_SERVICE_WORKER_PATH = '/dev-sw.js';
+
+type ViteLikeEnv = {
+    DEV?: boolean;
+    MODE?: string;
+};
 
 type SwRegistrarOptions = {
     immediate?: boolean;
@@ -117,8 +123,28 @@ function createServiceWorkerRegistrar(
     };
 }
 
+function getViteEnv(): ViteLikeEnv | undefined {
+    const meta = import.meta as ImportMeta & { env?: ViteLikeEnv };
+    return meta.env;
+}
+
+function isDevRuntime(env: ViteLikeEnv | undefined): boolean {
+    return env?.DEV === true || env?.MODE === 'development';
+}
+
+function resolveServiceWorkerPath(options: UsePwaOptions): string {
+    const env = getViteEnv();
+    const devRuntime = options.isDevMode ?? isDevRuntime(env);
+
+    if (devRuntime) {
+        return options.devSwPath ?? DEFAULT_DEV_SERVICE_WORKER_PATH;
+    }
+
+    return options.swPath ?? DEFAULT_SERVICE_WORKER_PATH;
+}
+
 function resolveServiceWorkerRegistrar(options: UsePwaOptions): (opts?: SwRegistrarOptions) => (reloadPage?: boolean) => Promise<void> {
-    const swPath = options.swPath ?? DEFAULT_SERVICE_WORKER_PATH;
+    const swPath = resolveServiceWorkerPath(options);
     return (opts) => createServiceWorkerRegistrar(swPath, opts);
 }
 
