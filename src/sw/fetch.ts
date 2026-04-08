@@ -9,7 +9,13 @@ import { getCachedPageResponse, getOfflineNavigationResponse } from './responses
 import { getRootRedirectResponse, maybeRecordRootRedirect } from './redirects.js';
 import { isCachableSync } from './routes.js';
 import { storePage } from './pages.js';
-import { DEFAULT_START_URL } from './constants.js';
+import {
+	DEFAULT_START_URL,
+	OFFLINE_TEMPLATE_FETCH_PATH,
+	OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
+} from './constants.js';
+import type { TemplatePageDataSource } from './constants.js';
 import { logDebug, logWarn } from './utils.js';
 import type { OfflineHtmlBuilder } from './types/utils.js';
 import { DEFAULT_OFFLINE_FALLBACK_STATUSES } from './constants.js';
@@ -72,6 +78,12 @@ export interface FetchHandlerOptions {
 	customHandlers?: Array<CustomFetchHandler>;
 	/** PWA start URL (from manifest.start_url, default: '/') */
 	startUrl?: string;
+	/** Path used to retrieve cached offline HTML template (default: '/') */
+	templateFetchPath?: string;
+	/** Selector for page payload target in template HTML (default: '[data-page]') */
+	templateElementSelector?: string;
+	/** Source mode for page payload target in template HTML (default: 'auto') */
+	templatePageDataSource?: TemplatePageDataSource;
 }
 
 /**
@@ -329,6 +341,9 @@ async function handleNavigationFetch(context: FetchContext, options: FetchHandle
 	const offlineFallbackStatuses = options.offlineFallbackStatuses || DEFAULT_OFFLINE_FALLBACK_STATUSES;
 	const buildOfflineHtml = options.buildOfflineHtml || defaultBuildOfflineHtml;
 	const startUrl = options.startUrl || DEFAULT_START_URL;
+	const templateFetchPath = options.templateFetchPath || OFFLINE_TEMPLATE_FETCH_PATH;
+	const templateElementSelector = options.templateElementSelector || OFFLINE_TEMPLATE_ELEMENT_SELECTOR;
+	const templatePageDataSource = options.templatePageDataSource || OFFLINE_TEMPLATE_PAGE_DATA_SOURCE;
 	logDebug('Handling navigation fetch', { path });
 
 	try {
@@ -338,7 +353,12 @@ async function handleNavigationFetch(context: FetchContext, options: FetchHandle
 		// Handle HTTP errors that should trigger offline fallback
 		if (offlineFallbackStatuses.has(networkRes.status)) {
 			logDebug('Network response has offline fallback status, handling offline response', { status: networkRes.status, path });
-			const offlineHtmlRes = await getOfflineNavigationResponse(path, { startUrl });
+			const offlineHtmlRes = await getOfflineNavigationResponse(path, {
+				startUrl,
+				templateFetchPath,
+				templateElementSelector,
+				templatePageDataSource,
+			});
 			if (offlineHtmlRes) {
 				return offlineHtmlRes;
 			}
@@ -353,7 +373,12 @@ async function handleNavigationFetch(context: FetchContext, options: FetchHandle
 
 		// Try to serve cached offline navigation response
 		logDebug('Attempting to serve cached offline navigation response', { path });
-		const offlineHtmlRes = await getOfflineNavigationResponse(path, { startUrl });
+		const offlineHtmlRes = await getOfflineNavigationResponse(path, {
+			startUrl,
+			templateFetchPath,
+			templateElementSelector,
+			templatePageDataSource,
+		});
 		if (offlineHtmlRes) {
 			return offlineHtmlRes;
 		}

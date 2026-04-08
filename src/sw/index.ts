@@ -8,7 +8,9 @@ export {
 	DEFAULT_START_URL,
 	OFFLINE_TEMPLATE_FETCH_PATH,
 	OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
 } from './constants.js';
+export type { TemplatePageDataSource } from './constants.js';
 
 // Refresh and caching
 export { getRefreshOptions, refreshAllExpired, cachePage } from './refresh.js';

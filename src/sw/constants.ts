@@ -21,6 +21,12 @@ export const OFFLINE_TEMPLATE_FETCH_PATH: string = '/';
 /** CSS selector for the Inertia page data element (default: [data-page]) */
 export const OFFLINE_TEMPLATE_ELEMENT_SELECTOR: string = '[data-page]';
 
+/** Source mode for locating Inertia page payload in HTML templates */
+export type TemplatePageDataSource = 'auto' | 'script' | 'attribute';
+
+/** Default page payload source mode (v3 script first, then v2 attribute fallback) */
+export const OFFLINE_TEMPLATE_PAGE_DATA_SOURCE: TemplatePageDataSource = 'auto';
+
 /** Prefix for system keys storing offline templates, followed by fetch path and selector */
 export const OFFLINE_TEMPLATE_SYSTEM_KEY_PREFIX: string = 'offlineTemplate:v2';
 

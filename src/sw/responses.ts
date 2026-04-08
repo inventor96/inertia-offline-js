@@ -6,8 +6,10 @@
 import {
 	OFFLINE_TEMPLATE_FETCH_PATH,
 	OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
 	DEFAULT_START_URL,
 } from './constants.js';
+import type { TemplatePageDataSource } from './constants.js';
 import { getPage } from './pages.js';
 import { getOfflineTemplate, generateOfflineTemplateSystemKey } from './template.js';
 import { isCachable } from './routes.js';
@@ -24,6 +26,8 @@ interface OfflineNavigationResponseOptions {
 	templateFetchPath?: string;
 	/** CSS selector for the Inertia page element in template */
 	templateElementSelector?: string;
+	/** Source mode for page payload in template */
+	templatePageDataSource?: TemplatePageDataSource;
 	/** PWA start URL (from manifest.start_url) */
 	startUrl?: string;
 }
@@ -85,6 +89,7 @@ export async function getOfflineNavigationResponse(
 	const {
 		templateFetchPath = OFFLINE_TEMPLATE_FETCH_PATH,
 		templateElementSelector = OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+		templatePageDataSource = OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
 		startUrl = DEFAULT_START_URL,
 	} = options;
 
@@ -92,6 +97,7 @@ export async function getOfflineNavigationResponse(
 		path, 
 		templateFetchPath,
 		templateElementSelector,
+		templatePageDataSource,
 	});
 
 	// For start URL, attempt to serve root redirect if available
@@ -113,7 +119,11 @@ export async function getOfflineNavigationResponse(
 	}
 
 	// Generate system key for retrieving cached template
-	const templateSystemKey = generateOfflineTemplateSystemKey(templateFetchPath, templateElementSelector);
+	const templateSystemKey = generateOfflineTemplateSystemKey(
+		templateFetchPath,
+		templateElementSelector,
+		templatePageDataSource,
+	);
 
 	// Get offline template and cached page data in parallel
 	const [templateRec, pageRec] = await Promise.all([
@@ -132,9 +142,11 @@ export async function getOfflineNavigationResponse(
 	}
 
 	// Validate that template has exactly one matching data-page attribute for safety
-	if (!validateSingleDataPageAttribute(templateRec.html)) {
+	if (!validateSingleDataPageAttribute(templateRec.html, templatePageDataSource, templateElementSelector)) {
 		logWarn('Offline template data-page attribute validation failed', {
 			targetPath,
+			templatePageDataSource,
+			templateElementSelector,
 		});
 		return null;
 	}
@@ -152,10 +164,17 @@ export async function getOfflineNavigationResponse(
 	};
 
 	// Inject page data into template via string manipulation
-	const html = injectPageDataToElement(templateRec.html, pageData);
+	const html = injectPageDataToElement(
+		templateRec.html,
+		pageData,
+		templatePageDataSource,
+		templateElementSelector,
+	);
 	if (!html) {
 		logWarn('Failed to inject page data into offline template', {
 			targetPath,
+			templatePageDataSource,
+			templateElementSelector,
 		});
 		return null;
 	}

@@ -79,6 +79,15 @@ const fetchHandler = createOfflineFetchHandler({
    * and non-Inertia XHR handling.
    */
   customHandlers: [async (event) => { ... }],
+
+  /**
+   * these should match maintenance handler settings when customized.
+   * default behavior (`auto`) prefers v3 script payload, then falls back to
+   * v2.
+   */
+  templateFetchPath: '/',
+  templateElementSelector: '[data-page]',
+  templatePageDataSource: 'auto',
 });
 
 const {
@@ -106,9 +115,18 @@ const {
   templateFetchPath: '/',
 
   /**
-   * selector to identify the element in the template HTML that has the Inertia
-   * page data
-   */
+  * source mode for page payload inside template HTML:
+  * - `auto` (default): v3 `<script data-page type="application/json">` first,
+  *   then fallback to v2 `data-page` attribute
+  * - `script`: only use v3 script payload
+  * - `attribute`: only use v2 attribute payload
+  */
+  templatePageDataSource: 'auto',
+
+  /**
+  * selector to identify the page payload target in template HTML.
+  * default works for v3 script and v2 attribute when used with `auto` mode.
+    */
   templateElementSelector: '[data-page]',
 
   /**
@@ -137,6 +155,20 @@ const {
    * same time
    */
   refreshStagger: 500,
+});
+```
+
+If you are on Inertia v2 and want strict v2 behavior, set this override:
+
+```js
+const fetchHandler = createOfflineFetchHandler({
+  templatePageDataSource: 'attribute',
+  templateElementSelector: '[data-page]',
+});
+
+createOfflineMaintenanceHandlers({
+  templatePageDataSource: 'attribute',
+  templateElementSelector: '[data-page]',
 });
 ```
 

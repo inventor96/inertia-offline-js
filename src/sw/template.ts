@@ -5,7 +5,13 @@
  */
 
 import { db } from './db.js';
-import { OFFLINE_TEMPLATE_FETCH_PATH, OFFLINE_TEMPLATE_ELEMENT_SELECTOR, OFFLINE_TEMPLATE_SYSTEM_KEY_PREFIX } from './constants.js';
+import {
+	OFFLINE_TEMPLATE_FETCH_PATH,
+	OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
+	OFFLINE_TEMPLATE_SYSTEM_KEY_PREFIX,
+} from './constants.js';
+import type { TemplatePageDataSource } from './constants.js';
 import { clearDataPageAttribute } from './dom-utils.js';
 import { getResponseEtag, logDebug, logWarn } from './utils.js';
 
@@ -13,13 +19,15 @@ import { getResponseEtag, logDebug, logWarn } from './utils.js';
  * Generates a system key for storing offline template cached from a specific path.
  * @param fetchPath - The path the template was fetched from
  * @param elementSelector - The CSS selector for the page element
+ * @param pageDataSource - The source mode for page data in the template
  * @returns System key for storage in IndexedDB
  */
 export function generateOfflineTemplateSystemKey(
 	fetchPath: string = OFFLINE_TEMPLATE_FETCH_PATH,
 	elementSelector: string = OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	pageDataSource: TemplatePageDataSource = OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
 ): string {
-	return `${OFFLINE_TEMPLATE_SYSTEM_KEY_PREFIX}:${fetchPath}:${elementSelector}`;
+	return `${OFFLINE_TEMPLATE_SYSTEM_KEY_PREFIX}:${fetchPath}:${elementSelector}:${pageDataSource}`;
 }
 
 /**
@@ -34,6 +42,8 @@ interface OfflineTemplateRecord {
 	fetchPath: string;
 	/** CSS selector for the Inertia page element in the template */
 	elementSelector: string;
+	/** Payload source mode for page data in the template */
+	pageDataSource: TemplatePageDataSource;
 	/** Timestamp when template was saved */
 	savedAt: number;
 }
@@ -63,19 +73,22 @@ export async function getOfflineTemplate(systemKey: string): Promise<OfflineTemp
  * Uses ETags for efficient cache validation.
  * @param fetchPath - Application path to fetch template from (default: '/')
  * @param elementSelector - CSS selector for the Inertia page element (default: '[data-page]')
+ * @param pageDataSource - Source mode for page payload in template (default: 'auto')
  * @returns Updated template record, or null if refresh failed
  */
 export async function refreshOfflineTemplate(
 	fetchPath: string = OFFLINE_TEMPLATE_FETCH_PATH,
 	elementSelector: string = OFFLINE_TEMPLATE_ELEMENT_SELECTOR,
+	pageDataSource: TemplatePageDataSource = OFFLINE_TEMPLATE_PAGE_DATA_SOURCE,
 ): Promise<OfflineTemplateRecord | null> {
 	// Generate system key from path and selector
-	const systemKey = generateOfflineTemplateSystemKey(fetchPath, elementSelector);
+	const systemKey = generateOfflineTemplateSystemKey(fetchPath, elementSelector, pageDataSource);
 
 	try {
 		logDebug('Refreshing offline template from app', {
 			fetchPath,
 			elementSelector,
+			pageDataSource,
 			systemKey,
 		});
 
@@ -126,9 +139,9 @@ export async function refreshOfflineTemplate(
 		const html = await templateRes.text();
 		
 		// Clear any pre-existing page data before storing template
-		const cleanHtml = clearDataPageAttribute(html);
+		const cleanHtml = clearDataPageAttribute(html, pageDataSource, elementSelector);
 		if (!cleanHtml) {
-			logWarn('Failed to clear existing page data from template', { fetchPath });
+			logWarn('Failed to clear existing page data from template', { fetchPath, pageDataSource, elementSelector });
 			return null;
 		}
 		
@@ -137,6 +150,7 @@ export async function refreshOfflineTemplate(
 			etag: getResponseEtag(templateRes),
 			fetchPath,
 			elementSelector,
+			pageDataSource,
 			savedAt: Date.now(),
 		};
 
@@ -147,6 +161,7 @@ export async function refreshOfflineTemplate(
 			hasEtag: !!rec.etag,
 			fetchPath,
 			elementSelector,
+			pageDataSource,
 			savedAt: rec.savedAt,
 		});
 
@@ -155,6 +170,7 @@ export async function refreshOfflineTemplate(
 		logWarn('refreshOfflineTemplate failed', {
 			fetchPath,
 			elementSelector,
+			pageDataSource,
 			error: err,
 		});
 		return null;
